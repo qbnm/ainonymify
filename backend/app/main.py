@@ -61,7 +61,7 @@ async def lifespan(app):
         store.close()
 
 
-app = FastAPI(title='PDF Privacy Gateway', docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+app = FastAPI(title='ainonymify', docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
 
 class Guard:
@@ -91,7 +91,7 @@ class Guard:
         except (ValueError, UnicodeError):
             allowed = False
         if not allowed:
-            return await reject(401, 'Authentication required', {'WWW-Authenticate': 'Basic realm="PDF Privacy Gateway", charset="UTF-8"'})
+            return await reject(401, 'Authentication required', {'WWW-Authenticate': 'Basic realm="ainonymify", charset="UTF-8"'})
         if scope['method'] in ('POST', 'PUT', 'PATCH', 'DELETE'):
             if headers.get(b'x-privacy-gateway') != b'1' or headers.get(b'sec-fetch-site') == b'cross-site':
                 return await reject(403, 'Same-origin application request required')
