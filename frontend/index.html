@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ainonymify</title><link rel="stylesheet" href="/css/app.css"><script type="module" src="/js/app.js"></script></head>
 <body>
-<header><a href="/" class="brand"><span class="mark">a</span><span>ainonymify<small>YOUR DOCUMENTS. YOUR ENVIRONMENT.</small></span></a><div class="header-actions"><span class="local">● Local processing</span><button class="quiet" id="delete-session">Delete session</button></div></header>
+<header><a href="/" class="brand"><span class="mark">a</span><span>ainonymify<small>YOUR DOCUMENTS. YOUR ENVIRONMENT.</small></span></a><div class="header-actions"><span class="local">● Local processing</span><button class="quiet" id="shortcuts-button" aria-label="Keyboard shortcuts">⌨</button><button class="quiet" id="delete-session">Delete session</button></div></header>
 <main>
 <section id="landing">
 <div class="intro"><span class="eyebrow">A PRIVATE WAY THROUGH</span><h1>Share the insight.<br>Keep the sensitive details.</h1><p>Create an anonymized copy for AI analysis. Your original PDF stays unchanged. Everything is processed here.</p></div>
 <div class="workspace">
-<div id="anonymize-panel"><label class="dropzone" id="dropzone"><span class="file-icon">↥</span><strong>Drop your PDFs here</strong><span>or choose files from your computer</span><small>Text, scanned or mixed PDFs · Up to 10 files by default</small><input id="pdf-files" type="file" accept="application/pdf,.pdf" multiple></label><p class="hint">01 Upload <span>→</span> 02 Choose regions <span>→</span> 03 Download privately</p></div>
+<div id="anonymize-panel"><label class="dropzone" id="dropzone"><span class="file-icon">↥</span><strong>Drop your PDFs here</strong><span>or choose files from your computer</span><small>Text, scanned or mixed PDFs · Up to 10 files by default</small><input id="pdf-files" type="file" accept="application/pdf,.pdf" multiple></label><p class="hint"><kbd data-command-key>Ctrl</kbd> + <kbd>U</kbd> to choose PDFs</p><p class="hint">01 Upload <span>→</span> 02 Choose regions <span>→</span> 03 Download privately</p></div>
 </div><div class="principles"><div><b>Stays local</b><p>No cloud APIs, telemetry or remote processing.</p></div><div><b>You make the call</b><p>Review detections and add anything we missed.</p></div><div><b>Temporary by design</b><p>Sessions expire after 30 minutes of inactivity by default.</p></div></div>
 </section>
 <section id="review" hidden>
@@ -18,5 +18,26 @@
 </section>
 <div id="message" role="alert" hidden></div><div id="busy" role="status" hidden><span class="spinner"></span><span id="busy-text">Processing locally…</span><small>Keep this page open. Large scans can take several minutes.</small></div>
 </main><footer>LOCAL IN. PRIVATE OUT.<span>ainonymify · No external AI connection</span></footer>
-<dialog id="edit-dialog" aria-labelledby="edit-dialog-title"><form id="edit-form"><div id="edit-drag-handle" role="button" tabindex="0" aria-label="Move review window. Drag or use arrow keys; Home to center."><h2 id="edit-dialog-title">Review sensitive region</h2><span aria-hidden="true">⠿ Drag to move</span></div><p id="edit-evidence" class="evidence"></p><label>Entity type<select id="edit-type"></select></label><label>Original value for private token reference<textarea id="edit-value" rows="3" maxlength="4096"></textarea></label><p class="hint">Correct OCR errors here. The value is included in the optional private token reference. Confirming also selects matching text on all pages of this PDF; Ignore applies only to this occurrence. Splitting an occurrence keeps it separate.</p><label id="split-label"><input id="edit-separate" type="checkbox"> Split this occurrence into a separate entity</label><label id="visual-label" hidden><input id="visual-only" type="checkbox"> Visual-only: remove this region without a text reference</label><div class="dialog-actions"><button type="button" id="edit-cancel">Cancel</button><button type="button" id="edit-ignore">Ignore region</button><button type="submit" class="primary">Confirm region</button></div></form></dialog>
+<dialog id="edit-dialog" aria-labelledby="edit-dialog-title"><form id="edit-form"><div id="edit-drag-handle" role="button" tabindex="0" aria-label="Move review window. Drag or use arrow keys; Home to center."><h2 id="edit-dialog-title">Review sensitive region</h2><span aria-hidden="true">⠿ Drag to move</span></div><p id="edit-evidence" class="evidence"></p><label>Entity type<select id="edit-type"></select></label><label>Original value for private token reference<textarea id="edit-value" rows="3" maxlength="4096"></textarea></label><p class="hint">Correct OCR errors here. The value is included in the optional private token reference. Confirming also selects matching text on all pages of this PDF; Ignore applies only to this occurrence. Splitting an occurrence keeps it separate.</p><label id="split-label"><input id="edit-separate" type="checkbox"> Split this occurrence into a separate entity</label><label id="visual-label" hidden><input id="visual-only" type="checkbox"> Visual-only: remove this region without a text reference</label><div class="dialog-actions"><button type="button" id="edit-cancel">Cancel</button><button type="button" id="edit-ignore">Ignore region</button><button type="submit" class="primary" id="confirm-region">Confirm region</button></div></form></dialog>
+<dialog id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+<div class="shortcuts-heading"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button id="shortcuts-close" aria-label="Close keyboard shortcuts">×</button></div>
+<p class="hint">Outside text fields. Single keys use their physical keyboard positions, including with another keyboard layout.</p>
+<table class="shortcuts-table"><thead><tr><th>Action</th><th>Shortcut</th></tr></thead><tbody>
+<tr><td>Upload PDFs (initial screen)</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>U</kbd></td></tr>
+<tr><td>Select text</td><td><kbd>T</kbd></td></tr>
+<tr><td>Draw sensitive region</td><td><kbd>R</kbd></td></tr>
+<tr><td>Select regions for bulk actions</td><td><kbd>S</kbd></td></tr>
+<tr><td>Redact highlighted PDF text</td><td><kbd>Enter</kbd> / <kbd>E</kbd></td></tr>
+<tr><td>Select all detections on this page</td><td><kbd>A</kbd></td></tr>
+<tr><td>Confirm / ignore selected detections</td><td><kbd>C</kbd> / <kbd>I</kbd></td></tr>
+<tr><td>Clear bulk selection</td><td><kbd>X</kbd></td></tr>
+<tr><td>Previous / next page</td><td><kbd>[</kbd> / <kbd>]</kbd></td></tr>
+<tr><td>Generate and download</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>Enter</kbd></td></tr>
+<tr><td>Cancel mode and clear selection</td><td><kbd>Esc</kbd></td></tr>
+<tr><td>Show this help</td><td><kbd>?</kbd></td></tr>
+</tbody></table>
+<p class="hint">In Review sensitive region: <kbd data-command-key>Ctrl</kbd> + <kbd>Enter</kbd> confirms; <kbd>Esc</kbd> closes without saving. Arrow keys move the dialog when its title handle is focused.</p>
+<label class="shortcut-preference"><input id="single-key-shortcuts" type="checkbox" checked> Enable single-key shortcuts</label>
+<p class="hint">This preference stays in this browser. Upload, Redact with Enter, generate, confirm, Escape and help remain available when single-key shortcuts are off.</p>
+</dialog>
 </body></html>

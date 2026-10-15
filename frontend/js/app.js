@@ -1,3 +1,5 @@
+import { resolveShortcut } from './shortcuts.mjs';
+
 const $ = id => document.getElementById(id);
 let session, currentDocument, currentPage = 1, interactionMode = null, selected, region;
 const bulkSelection = new Set();
@@ -168,12 +170,13 @@ function syncBulkSelection() {
   }
   for (const box of $('overlays').querySelectorAll('.bbox')) box.classList.toggle('selected',bulkSelection.has(box.dataset.detectionId));
 }
-$('select-page-detections').onchange=event=>{
+function selectPageDetections(checked) {
   for (const d of pageDetections()) {
-    if (event.target.checked) bulkSelection.add(d.id); else bulkSelection.delete(d.id);
+    if (checked) bulkSelection.add(d.id); else bulkSelection.delete(d.id);
   }
   syncBulkSelection();
-};
+}
+$('select-page-detections').onchange=event=>selectPageDetections(event.target.checked);
 $('clear-selection').onclick=()=>{bulkSelection.clear();syncBulkSelection();};
 async function applyBulkAction(status) {
   if (!bulkSelection.size) return;
@@ -326,7 +329,7 @@ $('draw-layer').onpointerup=event=>{
 };
 $('draw-layer').onpointercancel=clearSelectionDraft;
 $('draw-layer').onlostpointercapture=clearSelectionDraft;
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!editDialog.open)setInteractionMode(null);});
+
 
 // The canvas remains a PDF.js rendering; this transparent layer uses exact
 // source glyph boxes instead of OCR or a browser font's approximation of a word.
@@ -404,3 +407,77 @@ new ResizeObserver(() => {
     });
   }, 180);
 }).observe(document.querySelector('.preview-scroll'));
+
+
+const shortcutsDialog = $('shortcuts-dialog');
+const singleKeyToggle = $('single-key-shortcuts');
+try { singleKeyToggle.checked = localStorage.getItem('ainonymify.singleKeyShortcuts') !== 'off'; } catch {}
+singleKeyToggle.onchange = () => {
+  try { localStorage.setItem('ainonymify.singleKeyShortcuts', singleKeyToggle.checked ? 'on' : 'off'); } catch {}
+};
+$('shortcuts-button').onclick = () => shortcutsDialog.showModal();
+$('shortcuts-close').onclick = () => shortcutsDialog.close();
+const commandLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
+for (const element of document.querySelectorAll('[data-command-key]')) element.textContent = commandLabel;
+const shortcutButtons = {
+  upload: 'pdf-files',
+  text: 'text-select-button', draw: 'draw-button', select: 'select-regions-button',
+  reviewText: 'redact-selected-text', confirmBulk: 'bulk-confirm', ignoreBulk: 'bulk-ignore',
+  clearBulk: 'clear-selection', previous: 'previous', next: 'next', generate: 'generate-button',
+};
+for (const [id, keys] of Object.entries({
+  'text-select-button': ['Select text', 'T'], 'draw-button': ['Draw sensitive region', 'R'],
+  'select-regions-button': ['Select regions', 'S'],
+  'select-page-detections': ['Select all detections on this page', 'A'],
+  'bulk-confirm': ['Confirm selected detections', 'C'], 'bulk-ignore': ['Ignore selected detections', 'I'],
+  'clear-selection': ['Clear bulk selection', 'X'], 'previous': ['Previous page', '['], 'next': ['Next page', ']'],
+  'shortcuts-button': ['Keyboard shortcuts', '?'],
+})) {
+  $(id).title = `${keys[0]} (${keys[1]})`;
+  $(id).setAttribute('aria-keyshortcuts', keys[1]);
+}
+$('pdf-files').title = `Upload PDFs (${commandLabel}+U)`;
+$('pdf-files').setAttribute('aria-keyshortcuts', 'Control+U Meta+U');
+$('redact-selected-text').title = 'Redact selected text (Enter / E)';
+$('redact-selected-text').setAttribute('aria-keyshortcuts', 'Enter E');
+$('generate-button').title = `Generate and download (${commandLabel}+Enter)`;
+$('generate-button').setAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
+$('confirm-region').title = `Confirm region (${commandLabel}+Enter)`;
+$('confirm-region').setAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
+
+function isTyping(target) {
+  if (!(target instanceof Element)) return false;
+  return target.isContentEditable || !!target.closest('textarea, select, [role="textbox"], input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"])');
+}
+document.addEventListener('keydown', event => {
+  if (['Enter', 'NumpadEnter'].includes(event.code) && !event.ctrlKey && !event.metaKey && !event.altKey) readNativeSelection();
+  const action = resolveShortcut(event, {
+    busy: !$('busy').hidden, reviewOpen: !!session && !$('review').hidden,
+    dialog: editDialog.open ? 'review' : document.querySelector('dialog[open]') ? 'other' : null,
+    editing: isTyping(event.target), singleKeys: singleKeyToggle.checked,
+    uploadOpen: !$('landing').hidden, hasSelectedText: !!nativeSelectionDraft,
+    controlFocused: event.target instanceof Element && !!event.target.closest('button, a, input, select, textarea, summary, [role="button"]'),
+  });
+  if (!action) return;
+  if (action === 'reviewText') readNativeSelection();
+  if (action === 'confirmRegion') {
+    event.preventDefault();
+    $('edit-form').requestSubmit();
+  } else if (shortcutButtons[action]) {
+    const button = $(shortcutButtons[action]);
+    if (button.disabled || button.hidden) return;
+    event.preventDefault();
+    button.click();
+  } else if (action === 'help') {
+    event.preventDefault();
+    $('shortcuts-button').click();
+  } else if (action === 'selectPage') {
+    event.preventDefault();
+    selectPageDetections(true);
+  } else if (action === 'cancel') {
+    event.preventDefault();
+    setInteractionMode(null);
+    bulkSelection.clear(); syncBulkSelection();
+    $('message').hidden = true;
+  }
+});

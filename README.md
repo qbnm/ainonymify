@@ -40,6 +40,7 @@ Select text in the PDF, confirm its type, and matching occurrences in that docum
 - Direct character selection in electronic PDFs, plus rectangle selection for scanned content and manual corrections.
 - Automatic selection of repeated text across all pages of the current PDF after confirmation.
 - Bulk confirm/ignore actions in Detections or through rectangle selection on the page.
+- Keyboard shortcuts with in-app help and an option to disable single-key commands.
 - A movable **Review sensitive region** dialog; drag its title bar or use the arrow keys while the move handle is focused. Shift moves farther; Home centers it.
 - Replacement strings that preserve character count, uppercase/lowercase letters, digits, punctuation, whitespace, and line breaks.
 - Automatic download after successful generation: a PDF for one document, a ZIP for multiple documents.
@@ -125,6 +126,27 @@ Select checkboxes in **Detections**, use **Select all on page**, or activate **S
 **Confirm selected** and **Ignore selected** apply to checked occurrences across pages and documents. Confirmation also finds matching text in each affected PDF; ignoring affects only the checked occurrences. **Clear selection** clears the bulk selection without changing review states.
 
 Use the collapsed **Merge entities** panel to combine identities explicitly. The target entity supplies the private reference value and replacement identity. Case and whitespace are normalized for entity matching; approximate names are not silently merged. Splitting creates a separate identity.
+
+### Keyboard shortcuts
+
+Click the keyboard button in the header or press **?** to open the shortcut reference. Keys work outside text fields and are suspended while processing. Single-key commands use physical key positions, so they also work with non-English keyboard layouts.
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+U` / `⌘+U` | Open the PDF file chooser on the initial upload screen |
+| `T` | Toggle native text selection |
+| `R` | Toggle drawing a sensitive region |
+| `S` | Toggle rectangle selection of detections |
+| `Enter` / `E` | Redact highlighted native PDF text (opens region review) |
+| `A` | Select all detections on the current page |
+| `C` / `I` | Confirm / ignore the bulk selection |
+| `X` | Clear the bulk selection |
+| `[` / `]` | Previous / next page |
+| `Ctrl+Enter` / `⌘+Enter` | Generate and download; confirm the region when its review dialog is open |
+| `Esc` | Close a dialog without saving, or cancel the current mode and clear selections |
+| `?` | Open keyboard shortcut help |
+
+Dialog shortcuts are scoped to that dialog; ordinary typing and browser shortcuts such as Copy and Select All keep their normal behavior. Repeated keydown events do not queue extra processing. **Enable single-key shortcuts** in the help dialog can be turned off; this preference is stored in this browser, without document data. Upload, Redact with Enter, generate/confirm, Escape, and help remain available. Upload is scoped to the initial screen. Enter opens Redact only when native PDF text is highlighted and no interactive control is focused; otherwise its normal behavior is preserved.
 
 ### Downloads
 
@@ -214,6 +236,7 @@ Run checks in another terminal:
 ```sh
 .venv/bin/python -m pytest backend/tests -q
 node --check frontend/js/app.js
+node --test scripts/tests/shortcuts.test.mjs
 ```
 
 Do not run multiple workers or overlapping reload processes: startup cleanup owns the dedicated temporary directory. Tests use separate temporary directories and generate synthetic PDFs; real documents are not committed. The suite covers detection, OCR, session isolation/expiry, auth, manual/native selections, repeat selection, bulk actions, replacement structure, font layout, pixel removal, selected-region verification, PDF/ZIP downloads, private references, and failed regeneration.
