@@ -1,10 +1,37 @@
-# [ainonymify](https://github.com/qbnm/ainonymify)
+<p align="center">
+  <a href="https://github.com/qbnm/ainonymify">
+    <img src="docs/assets/ainonymify-logo.svg" alt="ainonymify logo" width="88" height="88">
+  </a>
+</p>
 
-**Local PDF anonymization for sharing documents with external AI tools.**
+<h1 align="center"><a href="https://github.com/qbnm/ainonymify">ainonymify</a></h1>
+
+<p align="center"><strong>Local PDF anonymization for sharing documents with external AI tools.</strong></p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-146b56"></a>
+  <a href="#local-development-and-verification"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&amp;logoColor=white"></a>
+  <a href="#quick-start"><img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&amp;logoColor=white"></a>
+</p>
 
 ainonymify is a self-hosted application for Docker hosts and Synology NAS devices. Upload PDFs, review sensitive text, and download anonymized copies. Your original files stay unchanged. Processing happens locally, without AI services, cloud APIs, telemetry, CDNs, or runtime downloads.
 
 **Only selected regions are anonymized. Inspect the exported PDF before sharing it. Keep the optional `mapping.json` private.**
+
+## Preview
+
+![ainonymify review workspace with a large PDF preview, selected regions, and the Detections sidebar](docs/assets/review-workspace.png)
+
+<details>
+<summary>Watch text selection and automatic repeat detection (10 seconds)</summary>
+
+Select text in the PDF, confirm its type, and matching occurrences in that document are selected automatically.
+
+![Select a company name, confirm it, and automatically mark its repeated occurrence](docs/assets/text-selection-demo.gif)
+
+</details>
+
+*The screenshot and animation use a synthetic invoice with fictional details. The document remains readable during review; selected regions are replaced when you generate the anonymized PDF.*
 
 ## Features
 
