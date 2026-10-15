@@ -59,7 +59,7 @@ docker compose up -d --build
 
 Open [ainonymify on localhost](http://127.0.0.1:8765) and sign in with the credentials from `.env`. Missing credentials and the example password `change-me` prevent startup.
 
-Builds and dependency installation require Internet access; document processing does not. PDF.js and its resources are bundled in `frontend/vendor/pdfjs`.
+Builds and dependency installation require Internet access; document processing does not. Docker Compose runs `composer install` in a dedicated image build stage. PDF.js and its resources are installed from `composer.lock` and published to `frontend/vendor/pdfjs`; the running application serves them locally without a CDN or dependency downloads.
 
 The default container runs as a non-root user with a read-only filesystem, RAM-backed `/tmp`, dropped capabilities, and a loopback-only port binding: `127.0.0.1:8765`. No document volume is mounted. Default limits are 3 GiB RAM, two CPUs, and 1.5 GiB temporary storage. Large scans may need more resources. Processing is serialized in one application process.
 
@@ -221,9 +221,10 @@ The Compose service, temporary-directory default, and mapping format retain the 
 
 ## Local development and verification
 
-Python 3.12+, Tesseract with German/English data, and a Unicode font are required.
+Python 3.12+, Tesseract with German/English data, and a Unicode font are required. Native frontend dependency installation also requires PHP 8.1+ and Composer 2; alternatively use the Composer tooling service described below.
 
 ```sh
+composer install
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements-dev.txt
 export APP_USERNAME=local
@@ -237,13 +238,32 @@ Run checks in another terminal:
 .venv/bin/python -m pytest backend/tests -q
 node --check frontend/js/app.js
 node --test scripts/tests/shortcuts.test.mjs
+php scripts/tests/frontend_assets_test.php
 ```
 
 Do not run multiple workers or overlapping reload processes: startup cleanup owns the dedicated temporary directory. Tests use separate temporary directories and generate synthetic PDFs; real documents are not committed. The suite covers detection, OCR, session isolation/expiry, auth, manual/native selections, repeat selection, bulk actions, replacement structure, font layout, pixel removal, selected-region verification, PDF/ZIP downloads, private references, and failed regeneration.
 
-`scripts/smoke_running.py --username USER --password PASSWORD` checks a running localhost deployment using synthetic data. Browser verification also covers the compact layout, responsive resizing, and alignment of native text selections.
+`.venv/bin/python scripts/smoke_running.py --username USER --password PASSWORD` checks a running localhost deployment using synthetic data. Browser verification also covers the compact layout, responsive resizing, and alignment of native text selections.
 
-Dependency versions are pinned in `requirements.txt`. The bundled PDF.js version is 5.4.624; `scripts/vendor_pdfjs.sh` refreshes that version from npm during development. PDF.js and bundled font licenses are retained with those assets.
+### Frontend dependencies with Composer
+
+`composer.json` and `composer.lock` pin PDF.js 5.4.624, including its archive checksum. A Composer package repository points to the official npm distribution archive; no Node/npm installation, Asset Packagist, Composer plugins, or separate CDN download script is needed.
+
+```sh
+# With PHP and Composer on the host:
+composer install
+
+# Or with Docker, using the .env from Quick start:
+docker compose run --rm composer install
+```
+
+Composer installs the complete dependency under root `vendor/`. Its post-install/post-update script publishes only the browser modules, CMaps, fonts, WASM, and licenses into `frontend/vendor/pdfjs`. Both vendor directories are generated and ignored by Git. Reinstallation removes stale published files; validation/copy failures preserve the previous published assets. If Composer scripts were disabled, run `composer run publish-frontend-assets` afterward.
+
+The Dockerfile uses a separate `composer:2` stage and runs `composer install --no-dev --prefer-dist --no-interaction --no-progress --no-plugins`. Local vendor directories are excluded from the build context: a fresh checkout builds without preparing assets on the host. Only the published frontend assets enter the final Python image; PHP and Composer are not required at runtime. The optional Compose `composer` service uses the `tools` profile and is not started by ordinary `docker compose up`.
+
+To upgrade PDF.js, update the pinned version in both `require` and the package repository definition, along with the official archive URL/checksum, then run `composer update npm-asset/pdfjs-dist` and commit the changed `composer.json` and `composer.lock`. Check published assets and PDF export before rebuilding the application.
+
+Python dependency versions remain pinned in `requirements.txt`. PDF.js and bundled font licenses are retained with the published assets.
 
 ### API
 

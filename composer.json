@@ -1,0 +1,36 @@
+{
+    "name": "qbnm/ainonymify",
+    "description": "Local PDF anonymization with Composer-managed frontend assets",
+    "type": "project",
+    "license": "AGPL-3.0-only",
+    "require": {
+        "php": ">=8.1",
+        "npm-asset/pdfjs-dist": "5.4.624"
+    },
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "npm-asset/pdfjs-dist",
+                "version": "5.4.624",
+                "type": "library",
+                "license": "Apache-2.0",
+                "dist": {
+                    "url": "https://registry.npmjs.org/pdfjs-dist/-/pdfjs-dist-5.4.624.tgz",
+                    "type": "tar",
+                    "shasum": "f00911beb481de998c29e8e464b88d500cb1f4a8"
+                }
+            }
+        },
+        { "packagist.org": false }
+    ],
+    "config": {
+        "allow-plugins": false,
+        "sort-packages": true
+    },
+    "scripts": {
+        "publish-frontend-assets": "@php scripts/install_frontend_assets.php",
+        "post-install-cmd": ["@publish-frontend-assets"],
+        "post-update-cmd": ["@publish-frontend-assets"]
+    }
+}

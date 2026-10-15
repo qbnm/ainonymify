@@ -1,6 +1,8 @@
 services:
   pdf-privacy-gateway:
-    build: .
+    build:
+      context: .
+      target: runtime
     restart: unless-stopped
     ports:
       - "127.0.0.1:8765:8000"
@@ -23,3 +25,16 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+  # Optional local tooling; not started by `docker compose up`.
+  composer:
+    image: composer:2
+    profiles: ["tools"]
+    working_dir: /app
+    entrypoint: ["composer"]
+    command: ["install", "--prefer-dist", "--no-interaction", "--no-progress", "--no-plugins"]
+    environment:
+      COMPOSER_ALLOW_SUPERUSER: "1"
+      COMPOSER_HOME: /tmp/composer
+    volumes:
+      - .:/app

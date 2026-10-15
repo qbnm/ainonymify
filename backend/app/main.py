@@ -31,7 +31,7 @@ async def lifespan(app):
     if not os.getenv('APP_USERNAME') or not os.getenv('APP_PASSWORD') or os.environ['APP_PASSWORD'] == 'change-me':
         raise RuntimeError('Set APP_USERNAME and a non-default APP_PASSWORD before starting')
     if not (FRONTEND / 'vendor/pdfjs/pdf.mjs').exists():
-        raise RuntimeError('Local PDF.js assets missing; run scripts/vendor_pdfjs.sh')
+        raise RuntimeError('Local PDF.js assets missing; run composer install or rebuild the Docker image')
     languages = set(pdf.pytesseract.get_languages())
     if not set(pdf.OCR_LANG.split('+')) <= languages:
         raise RuntimeError('Configured local OCR language data is missing')

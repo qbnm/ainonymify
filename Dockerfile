@@ -1,4 +1,11 @@
-FROM python:3.12-slim-bookworm
+FROM composer:2 AS frontend-assets
+WORKDIR /build
+ENV COMPOSER_ALLOW_SUPERUSER=1
+COPY composer.json composer.lock ./
+COPY scripts/install_frontend_assets.php scripts/install_frontend_assets.php
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-plugins
+
+FROM python:3.12-slim-bookworm AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     OCR_LANGUAGES=deu+eng APP_TEMP_DIR=/tmp/pdf-privacy-gateway OMP_THREAD_LIMIT=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -9,8 +16,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend ./backend
 COPY frontend ./frontend
+COPY --from=frontend-assets /build/frontend/vendor ./frontend/vendor
 COPY scripts ./scripts
-# Downloaded only during the build. No CDN or runtime dependency fetches.
+# Composer runs in the build stage; the runtime needs no PHP or dependency downloads.
 RUN useradd --uid 10001 --create-home gateway
 USER 10001:10001
 EXPOSE 8000

@@ -6,3 +6,6 @@
 __pycache__
 .pytest_cache
 backend/tests
+
+/vendor
+/frontend/vendor
