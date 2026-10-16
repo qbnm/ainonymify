@@ -140,3 +140,19 @@ aside{min-height:0;max-height:none;padding:12px;border-left:1px solid var(--line
 kbd{display:inline-block;min-width:22px;padding:1px 5px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;background:var(--paper);font:11px/1.6 ui-monospace,monospace;text-align:center;color:var(--ink)}
 .shortcut-preference{display:flex!important;align-items:center;gap:6px;font-size:12px}
 @media(max-width:520px){.header-actions .local{display:none}}
+
+.landing-layout{display:grid;grid-template-columns:minmax(0,660px) 280px;align-items:start;gap:24px;max-width:964px;margin:0 auto}
+.landing-layout .workspace{width:100%;margin:0}
+.keyboard-guide{background:white;border:1px solid var(--line);border-radius:12px;padding:16px}
+.keyboard-guide h2{font-size:14px;margin:0 0 6px}
+.keyboard-guide>.hint{font-size:11px;line-height:1.45;margin:0 0 8px}
+.keyboard-guide .shortcuts-table{font-size:11px;margin:8px 0 12px}
+.keyboard-guide .shortcuts-table th,.keyboard-guide .shortcuts-table td{padding:3px 0;vertical-align:middle}
+.keyboard-guide .shortcuts-table th:last-child,.keyboard-guide .shortcuts-table td:last-child{padding-left:8px}
+.keyboard-guide kbd{font-size:10px;min-width:20px;padding:0 4px}
+#landing-shortcuts-more{width:100%;font-size:11px;padding:7px}
+@media(max-width:760px){
+  .landing-layout{grid-template-columns:minmax(0,1fr);max-width:660px;gap:16px}
+  .keyboard-guide{padding:14px 16px}
+  .keyboard-guide .shortcuts-table{font-size:12px}
+}

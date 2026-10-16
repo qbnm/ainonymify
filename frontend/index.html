@@ -5,8 +5,15 @@
 <main>
 <section id="landing">
 <div class="intro"><span class="eyebrow">A PRIVATE WAY THROUGH</span><h1>Share the insight.<br>Keep the sensitive details.</h1><p>Create an anonymized copy for AI analysis. Your original PDF stays unchanged. Everything is processed here.</p></div>
-<div class="workspace">
+<div class="landing-layout"><div class="workspace">
 <div id="anonymize-panel"><label class="dropzone" id="dropzone"><span class="file-icon">↥</span><strong>Drop your PDFs here</strong><span>or choose files from your computer</span><small>Text, scanned or mixed PDFs · Up to 10 files by default</small><input id="pdf-files" type="file" accept="application/pdf,.pdf" multiple></label><p class="hint"><kbd data-command-key>Ctrl</kbd> + <kbd>U</kbd> to choose PDFs</p><p class="hint">01 Upload <span>→</span> 02 Choose regions <span>→</span> 03 Download privately</p></div>
+</div>
+<section class="keyboard-guide" aria-labelledby="landing-shortcuts-title">
+<h2 id="landing-shortcuts-title">Keyboard shortcuts</h2>
+<p class="hint">Review shortcuts apply after upload.</p>
+<div id="landing-shortcuts"></div>
+<button id="landing-shortcuts-more" class="quiet">Shortcut settings &amp; full help</button>
+</section>
 </div><div class="principles"><div><b>Stays local</b><p>No cloud APIs, telemetry or remote processing.</p></div><div><b>You make the call</b><p>Review detections and add anything we missed.</p></div><div><b>Temporary by design</b><p>Sessions expire after 30 minutes of inactivity by default.</p></div></div>
 </section>
 <section id="review" hidden>
@@ -23,18 +30,18 @@
 <div class="shortcuts-heading"><h2 id="shortcuts-title">Keyboard shortcuts</h2><button id="shortcuts-close" aria-label="Close keyboard shortcuts">×</button></div>
 <p class="hint">Outside text fields. Single keys use their physical keyboard positions, including with another keyboard layout.</p>
 <table class="shortcuts-table"><thead><tr><th>Action</th><th>Shortcut</th></tr></thead><tbody>
-<tr><td>Upload PDFs (initial screen)</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>U</kbd></td></tr>
+<tr><td data-compact-label="Upload PDFs">Upload PDFs (initial screen)</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>U</kbd></td></tr>
 <tr><td>Select text</td><td><kbd>T</kbd></td></tr>
-<tr><td>Draw sensitive region</td><td><kbd>R</kbd></td></tr>
-<tr><td>Select regions for bulk actions</td><td><kbd>S</kbd></td></tr>
-<tr><td>Redact highlighted PDF text</td><td><kbd>Enter</kbd> / <kbd>E</kbd></td></tr>
-<tr><td>Select all detections on this page</td><td><kbd>A</kbd></td></tr>
-<tr><td>Confirm / ignore selected detections</td><td><kbd>C</kbd> / <kbd>I</kbd></td></tr>
-<tr><td>Clear bulk selection</td><td><kbd>X</kbd></td></tr>
+<tr><td data-compact-label="Draw region">Draw sensitive region</td><td><kbd>R</kbd></td></tr>
+<tr><td data-compact-label="Select regions">Select regions for bulk actions</td><td><kbd>S</kbd></td></tr>
+<tr><td data-compact-label="Redact selected text">Redact highlighted PDF text</td><td><kbd>Enter</kbd> / <kbd>E</kbd></td></tr>
+<tr><td data-compact-label="Select page detections">Select all detections on this page</td><td><kbd>A</kbd></td></tr>
+<tr><td data-compact-label="Confirm / ignore">Confirm / ignore selected detections</td><td><kbd>C</kbd> / <kbd>I</kbd></td></tr>
+<tr><td data-compact-label="Clear selection">Clear bulk selection</td><td><kbd>X</kbd></td></tr>
 <tr><td>Previous / next page</td><td><kbd>[</kbd> / <kbd>]</kbd></td></tr>
-<tr><td>Generate and download</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>Enter</kbd></td></tr>
-<tr><td>Cancel mode and clear selection</td><td><kbd>Esc</kbd></td></tr>
-<tr><td>Show this help</td><td><kbd>?</kbd></td></tr>
+<tr><td data-compact-label="Generate &amp; download">Generate and download</td><td><kbd data-command-key>Ctrl</kbd> + <kbd>Enter</kbd></td></tr>
+<tr><td data-compact-label="Cancel / clear">Cancel mode and clear selection</td><td><kbd>Esc</kbd></td></tr>
+<tr><td data-compact-label="Full help">Show this help</td><td><kbd>?</kbd></td></tr>
 </tbody></table>
 <p class="hint">In Review sensitive region: <kbd data-command-key>Ctrl</kbd> + <kbd>Enter</kbd> confirms; <kbd>Esc</kbd> closes without saving. Arrow keys move the dialog when its title handle is focused.</p>
 <label class="shortcut-preference"><input id="single-key-shortcuts" type="checkbox" checked> Enable single-key shortcuts</label>

@@ -419,6 +419,10 @@ $('shortcuts-button').onclick = () => shortcutsDialog.showModal();
 $('shortcuts-close').onclick = () => shortcutsDialog.close();
 const commandLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 for (const element of document.querySelectorAll('[data-command-key]')) element.textContent = commandLabel;
+const landingShortcutTable = shortcutsDialog.querySelector('.shortcuts-table').cloneNode(true);
+for (const label of landingShortcutTable.querySelectorAll('[data-compact-label]')) label.textContent = label.dataset.compactLabel;
+$('landing-shortcuts').append(landingShortcutTable);
+$('landing-shortcuts-more').onclick = () => $('shortcuts-button').click();
 const shortcutButtons = {
   upload: 'pdf-files',
   text: 'text-select-button', draw: 'draw-button', select: 'select-regions-button',

@@ -129,7 +129,7 @@ Use the collapsed **Merge entities** panel to combine identities explicitly. The
 
 ### Keyboard shortcuts
 
-Click the keyboard button in the header or press **?** to open the shortcut reference. Keys work outside text fields and are suspended while processing. Single-key commands use physical key positions, so they also work with non-English keyboard layouts.
+A keyboard reference is visible beside the upload panel on the initial screen (below it on small screens). Click **Shortcut settings & full help**, the keyboard button in the header, or press **?** to open the full reference and settings. Keys work outside text fields and are suspended while processing. Single-key commands use physical key positions, so they also work with non-English keyboard layouts.
 
 | Shortcut | Action |
 |---|---|
