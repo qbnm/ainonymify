@@ -40,6 +40,7 @@ def client(monkeypatch, tmp_path):
     monkeypatch.setenv('APP_USERNAME', 'tester')
     monkeypatch.setenv('APP_PASSWORD', 'test-password-123')
     monkeypatch.setenv('APP_TEMP_DIR', str(tmp_path / 'runtime'))
+    monkeypatch.setenv('APP_DATA_DIR', str(tmp_path / 'accounts'))
     from fastapi.testclient import TestClient
     from backend.app.main import app
     with TestClient(app, headers={'X-Privacy-Gateway':'1', 'Authorization':'Basic dGVzdGVyOnRlc3QtcGFzc3dvcmQtMTIz'}) as client:

@@ -7,14 +7,17 @@ from pathlib import Path
 import os
 import shutil
 import tempfile
+import secrets
+from http.cookies import SimpleCookie
 import pymupdf as fitz
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from .models import Document, Detection, TYPES, uid
 from .services.sessions import Store, invalidate
-from .services import pdf, pipeline, repeats
+from .services import pdf, pipeline, repeats, personal_rules
+from .services.accounts import Accounts, owner, text_key
 
 FRONTEND = Path(__file__).resolve().parents[2] / 'frontend'
 if not FRONTEND.exists():
@@ -23,11 +26,12 @@ MAX_FILE = int(os.getenv('MAX_FILE_MB', '20')) * 1024 * 1024
 MAX_BATCH = int(os.getenv('MAX_BATCH_MB', '80')) * 1024 * 1024
 MAX_DOCUMENTS = int(os.getenv('MAX_DOCUMENTS', '10'))
 store = None
+accounts = None
 
 
 @asynccontextmanager
 async def lifespan(app):
-    global store
+    global store, accounts
     if not os.getenv('APP_USERNAME') or not os.getenv('APP_PASSWORD') or os.environ['APP_PASSWORD'] == 'change-me':
         raise RuntimeError('Set APP_USERNAME and a non-default APP_PASSWORD before starting')
     if not (FRONTEND / 'vendor/pdfjs/pdf.mjs').exists():
@@ -45,6 +49,7 @@ async def lifespan(app):
         if path.is_dir():
             shutil.rmtree(path)
     store = Store(ttl=int(os.getenv('SESSION_TTL_SECONDS', '1800')), root=parent)
+    accounts = Accounts(os.getenv('APP_DATA_DIR', str(Path.cwd() / '.local/account-data')))
     async def sweeper():
         while True:
             await asyncio.sleep(15)
@@ -59,6 +64,7 @@ async def lifespan(app):
         except asyncio.CancelledError:
             pass
         store.close()
+        accounts.close()
 
 
 app = FastAPI(title='ainonymify', docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
@@ -109,7 +115,29 @@ class Guard:
             if received > MAX_BATCH + 1024 * 1024:
                 raise ValueError('Request exceeds the upload limit')
             return message
-        await self.app(scope, limited_receive, safe_send)
+        cookies = SimpleCookie()
+        try:
+            cookies.load(headers.get(b'cookie', b'').decode('latin1'))
+        except Exception:
+            cookies = SimpleCookie()
+        login = cookies.get('ainonymify_login')
+        token = login.value if login else ''
+        identity = accounts.identity(token) if token else None
+        guest = cookies.get('ainonymify_guest')
+        valid_guest = guest and len(guest.value) == 64 and all(c in '0123456789abcdef' for c in guest.value)
+        guest_token = guest.value if valid_guest else secrets.token_hex(32)
+        scope['state'] = {'account': identity, 'login_token': token}
+        context = owner.set('u:' + identity['id'] if identity else 'g:' + hashlib.sha256(guest_token.encode()).hexdigest())
+        async def identity_send(message):
+            if message['type'] == 'http.response.start' and not valid_guest and scope['path'].startswith('/api/'):
+                secure = '; Secure' if scope['scheme'] == 'https' else ''
+                message.setdefault('headers', []).append((b'set-cookie',
+                    f'ainonymify_guest={guest_token}; Path=/; HttpOnly; SameSite=Strict{secure}'.encode()))
+            await safe_send(message)
+        try:
+            await self.app(scope, limited_receive, identity_send)
+        finally:
+            owner.reset(context)
 
 
 app.add_middleware(Guard)
@@ -151,6 +179,101 @@ def document(session, did):
 
 def missing():
     raise KeyError()
+
+
+def account_required(request):
+    account = request.state.account
+    if not account:
+        raise HTTPException(401, 'Sign in to use saved personal rules')
+    return account['id']
+
+
+def login_cookie(response, request, token):
+    response.set_cookie('ainonymify_login', token, max_age=30*86400,
+                        httponly=True, samesite='strict', secure=request.url.scheme == 'https')
+
+
+class Credentials(BaseModel):
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=12, max_length=256)
+
+
+@app.get('/api/account')
+def account_status(request: Request):
+    return {'account': request.state.account}
+
+
+@app.post('/api/account/register')
+@app.post('/api/account/login')
+def account_login(data: Credentials, request: Request, response: Response):
+    action = request.url.path.rsplit('/', 1)[-1]
+    accounts.throttle(request.client.host if request.client else 'local')
+    identity, token = accounts.authenticate(data.username, data.password, register=action == 'register')
+    accounts.logout(request.state.login_token)
+    login_cookie(response, request, token)
+    return {'account': identity}
+
+
+@app.delete('/api/account/login')
+def account_logout(request: Request, response: Response):
+    accounts.logout(request.state.login_token)
+    response.delete_cookie('ainonymify_login', httponly=True, samesite='strict')
+    return {'account': None}
+
+
+@app.delete('/api/account')
+def account_delete(request: Request, response: Response):
+    user_id = account_required(request)
+    accounts.delete_account(user_id)
+    store.delete_owned('u:' + user_id)
+    response.delete_cookie('ainonymify_login', httponly=True, samesite='strict')
+    return {'account': None}
+
+
+class PersonalRule(BaseModel):
+    text: str = Field(min_length=1, max_length=4096)
+    type: str
+    label: str = Field(default='', max_length=80)
+    action: str
+
+
+@app.get('/api/account/rules')
+def account_rules(request: Request):
+    return {'rules': accounts.list_rules(account_required(request))}
+
+
+@app.post('/api/account/rules')
+def save_rule(data: PersonalRule, request: Request):
+    user_id = account_required(request)
+    if data.type not in TYPES or data.action not in ('redact', 'ignore'):
+        raise ValueError('Choose a valid type and action')
+    accounts.save_rule(user_id, data.text, data.type, data.label or data.type, data.action)
+    return {'rules': accounts.list_rules(user_id)}
+
+
+@app.delete('/api/account/rules/{rule_id}')
+def forget_rule(rule_id: str, request: Request):
+    user_id = account_required(request)
+    accounts.delete_rule(user_id, rule_id)
+    return {'rules': accounts.list_rules(user_id)}
+
+
+def remember(session, detections, label=''):
+    identity = owner.get()
+    if not identity or not identity.startswith('u:'):
+        return
+    entities = {e.id: e for e in session.entities}
+    values = []
+    for detection in detections:
+        entity = entities[detection.entity_id]
+        text = detection.original_text or entity.value
+        if detection.status not in ('confirmed', 'ignored') or not entity.value or not any(c.isalnum() for c in text):
+            continue
+        action = 'ignore' if detection.status == 'ignored' else 'redact'
+        values.append((text, entity.type, label, action))
+        if text_key(entity.value) != text_key(text):
+            values.append((entity.value, entity.type, label, action))
+    accounts.save_rules(identity[2:], values)
 
 
 @app.post('/api/sessions')
@@ -210,6 +333,9 @@ def analyze(sid: str):
         session.status = 'analyzing'
         try:
             run_job(pipeline.analyze, session, root)
+            identity = owner.get()
+            if identity and identity.startswith('u:'):
+                personal_rules.apply(session, accounts.list_rules(identity[2:]))
         except Exception:
             session.status = 'analysis_failed'
             raise
@@ -228,11 +354,14 @@ class Edit(BaseModel):
     type: str
     value: str = Field(max_length=4096)
     separate: bool = False
+    personal_label: str = Field(default='', max_length=80)
+    remember: bool = True
 
 
 class BulkEdit(BaseModel):
     detection_ids: list[str] = Field(min_length=1, max_length=10000)
     status: str
+    remember: bool = True
 
 
 @app.post('/api/sessions/{sid}/detections/bulk')
@@ -259,6 +388,8 @@ def bulk_edit(sid: str, data: BulkEdit):
                 expanded.add(key)
                 repeats.mark_repeats(session, document(session, seed.document_id), seed)
         invalidate(session, root)
+        if data.remember:
+            remember(session, [by_id[i] for i in sorted(ids)])
         return session.public()
 
 
@@ -268,6 +399,8 @@ class TextRegion(BaseModel):
     character_ids: list[int] = Field(min_length=1, max_length=20000)
     type: str
     value: str = Field(default='', max_length=4096)
+    personal_label: str = Field(default='', max_length=80)
+    remember: bool = True
 
 
 @app.post('/api/sessions/{sid}/detections/from-text')
@@ -285,6 +418,8 @@ def native_text_region(sid: str, data: TextRegion):
             entity.id, original, entity.normalized_value, 'confirmed', 'Selected from original visible PDF text', rects=rects))
         repeats.mark_repeats(session, doc, seed)
         invalidate(session, root)
+        if data.remember:
+            remember(session, [seed], data.personal_label)
         return session.public()
 
 
@@ -302,6 +437,8 @@ def edit(sid: str, detection_id: str, data: Edit):
         if data.status == 'confirmed' and not data.separate:
             repeats.mark_repeats(session, document(session, detection.document_id), detection)
         invalidate(session, root)
+        if not data.separate and data.remember:
+            remember(session, [detection], data.personal_label)
         return session.public()
 
 
@@ -311,6 +448,8 @@ class Region(BaseModel):
     bbox: list[float] = Field(min_length=4, max_length=4)
     type: str
     value: str = Field(default='', max_length=4096)
+    personal_label: str = Field(default='', max_length=80)
+    remember: bool = True
     visual_only: bool = False
 
 
@@ -341,6 +480,8 @@ def manual(sid: str, data: Region):
         if not data.visual_only:
             repeats.mark_repeats(session, doc, seed)
         invalidate(session, root)
+        if not data.visual_only and data.remember:
+            remember(session, [seed], data.personal_label)
         return session.public()
 
 

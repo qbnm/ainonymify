@@ -19,7 +19,8 @@ COPY frontend ./frontend
 COPY --from=frontend-assets /build/frontend/vendor ./frontend/vendor
 COPY scripts ./scripts
 # Composer runs in the build stage; the runtime needs no PHP or dependency downloads.
-RUN useradd --uid 10001 --create-home gateway
+RUN useradd --uid 10001 --create-home gateway \
+    && mkdir -p /data && chown 10001:10001 /data && chmod 700 /data
 USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request,urllib.error; r=urllib.request.Request('http://127.0.0.1:8000/'); exec('try:\n urllib.request.urlopen(r)\nexcept urllib.error.HTTPError as e:\n assert e.code == 401')"

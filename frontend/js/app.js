@@ -1,4 +1,5 @@
 import { resolveShortcut } from './shortcuts.mjs';
+import { initAccounts } from './accounts.js';
 
 const $ = id => document.getElementById(id);
 let session, currentDocument, currentPage = 1, interactionMode = null, selected, region;
@@ -32,7 +33,9 @@ async function api(path, {method='GET', data, form}={}) {
 const mutate = async (suffix, data) => (await api(`/api/sessions/${session.id}${suffix}`, {method:'POST', data})).json();
 async function begin(files) {
   if (!files.length) return;
+  await accountUI.ready;
   await work(`Uploading ${files.length} PDF${files.length===1?'':'s'} locally…`, async () => {
+    await accountUI.refresh();
     if (Array.from(files).some(f => !f.name.toLowerCase().endsWith('.pdf'))) throw new Error('Choose PDF files only.');
     session = await (await api('/api/sessions', {method:'POST'})).json();
     const form = new FormData(); for (const file of files) form.append('files', file);
@@ -206,6 +209,9 @@ function keepDialogVisible() {
   positionDialog(rect.left, rect.top);
 }
 function openEditDialog() {
+  $('personal-decision').hidden = !accountUI.current();
+  $('remember-decision').checked = true;
+  $('personal-label').value = selected?.source === 'personal_rule' ? selected.reason.replace(/^Saved rule: /, '') : '';
   editDialog.showModal();
   keepDialogVisible();
 }
@@ -257,10 +263,10 @@ function editDetection(d) {
 }
 $('edit-cancel').onclick = () => $('edit-dialog').close();
 async function saveEdit(status) {
-  const data = {type:$('edit-type').value, value:$('edit-value').value, status, separate:$('edit-separate').checked};
+  const data = {type:$('edit-type').value, value:$('edit-value').value, status, separate:$('edit-separate').checked, personal_label:$('personal-label').value, remember:$('remember-decision').checked};
   await work('Updating selection and finding repeated text…', async () => {
     const previousRepeats = new Set(session.detections.filter(d=>d.status==='confirmed'&&d.source==='repeated_text').map(d=>d.id));
-    if (region) session=await mutate(region.character_ids ? '/detections/from-text' : '/detections', {...region,type:data.type,value:data.value,visual_only:$('visual-only').checked});
+    if (region) session=await mutate(region.character_ids ? '/detections/from-text' : '/detections', {...region,type:data.type,value:data.value,visual_only:$('visual-only').checked,personal_label:data.personal_label,remember:data.remember});
     else session=await mutate(`/detections/${selected.id}`,data);
     $('edit-dialog').close(); await update();
     const addedRepeats = session.detections.filter(d=>d.status==='confirmed'&&d.source==='repeated_text'&&!previousRepeats.has(d.id));
@@ -485,3 +491,5 @@ document.addEventListener('keydown', event => {
     $('message').hidden = true;
   }
 });
+
+const accountUI = initAccounts({api, types, hasSession:()=>Boolean(session)});

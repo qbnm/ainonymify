@@ -9,3 +9,5 @@ backend/tests
 
 /vendor
 /frontend/vendor
+
+/.local

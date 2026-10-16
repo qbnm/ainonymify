@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import time
 from ..models import Session
+from .accounts import owner
 
 
 class Store:
@@ -14,13 +15,14 @@ class Store:
         self.root.chmod(0o700)
         self.ttl, self.maximum = ttl, maximum
         self.items = {}
+        self.owners = {}
         self.lock = RLock()
 
     def cleanup(self):
         with self.lock:
             for sid, (_, touched) in list(self.items.items()):
                 if time.monotonic() - touched > self.ttl:
-                    self.delete(sid)
+                    self.delete(sid, internal=True)
 
     def create(self):
         with self.lock:
@@ -30,13 +32,14 @@ class Store:
             session = Session()
             (self.root / session.id).mkdir(mode=0o700)
             self.items[session.id] = (session, time.monotonic())
+            self.owners[session.id] = owner.get()
             return session
 
     @contextmanager
     def access(self, sid):
         with self.lock:
             self.cleanup()
-            if sid not in self.items:
+            if sid not in self.items or self.owners.get(sid) != owner.get():
                 raise KeyError('Session not found or expired')
             session, _ = self.items[sid]
             self.items[sid] = (session, time.monotonic())
@@ -45,15 +48,28 @@ class Store:
             if sid in self.items:
                 self.items[sid] = (session, time.monotonic())
 
-    def delete(self, sid):
+    def delete(self, sid, internal=False):
         with self.lock:
+            # Never build a filesystem deletion path from an unknown caller ID.
+            if sid not in self.items:
+                return
+            if not internal and self.owners.get(sid) != owner.get():
+                raise KeyError('Session not found')
+            self.owners.pop(sid, None)
             self.items.pop(sid, None)
             shutil.rmtree(self.root / sid, ignore_errors=True)
+
+    def delete_owned(self, identity):
+        with self.lock:
+            for sid in list(self.items):
+                if self.owners.get(sid) == identity:
+                    self.delete(sid, internal=True)
 
     def close(self):
         with self.lock:
             shutil.rmtree(self.root, ignore_errors=True)
             self.items.clear()
+            self.owners.clear()
 
 
 def invalidate(session, path):

@@ -9,12 +9,15 @@ services:
     environment:
       APP_USERNAME: ${APP_USERNAME:?Set APP_USERNAME in .env}
       APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in .env}
+      APP_DATA_DIR: /data
       SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-1800}
       OCR_LANGUAGES: ${OCR_LANGUAGES:-deu+eng}
       MAX_FILE_MB: ${MAX_FILE_MB:-20}
       MAX_BATCH_MB: ${MAX_BATCH_MB:-80}
       MAX_PAGES: ${MAX_PAGES:-60}
       MAX_DOCUMENTS: ${MAX_DOCUMENTS:-10}
+    volumes:
+      - account-data:/data
     read_only: true
     tmpfs:
       - /tmp:size=1536m,mode=1777
@@ -38,3 +41,6 @@ services:
       COMPOSER_HOME: /tmp/composer
     volumes:
       - .:/app
+
+volumes:
+  account-data:

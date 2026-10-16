@@ -156,3 +156,26 @@ kbd{display:inline-block;min-width:22px;padding:1px 5px;border:1px solid var(--l
   .keyboard-guide{padding:14px 16px}
   .keyboard-guide .shortcuts-table{font-size:12px}
 }
+
+#account-button{font-size:11px;padding:5px 8px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#identity-summary{margin:0 0 12px;line-height:1.5}
+#account-dialog{width:600px;max-height:calc(100dvh - 24px);overflow:auto;padding:20px}
+#account-dialog p{font-size:12px}
+#account-dialog .hint,#personal-decision .hint{font-size:11px}
+dialog input:not([type=checkbox]){display:block;width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit;color:var(--ink);background:white}
+#personal-decision{border-top:1px solid var(--line);padding-top:4px}
+#personal-decision label{font-size:11px}
+#saved-rules{max-height:240px;overflow:auto;border-bottom:1px solid var(--line)}
+.saved-rule{display:flex;gap:10px;align-items:start;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);font-size:12px}
+.saved-rule>div:first-child{min-width:0;overflow-wrap:anywhere}
+.saved-rule strong,.saved-rule span,.saved-rule small{display:block}
+.saved-rule strong{font-size:11px;color:var(--teal)}
+.saved-rule span{white-space:pre-wrap}
+.saved-rule small{color:var(--muted);font-size:10px}
+.saved-rule-actions{display:flex;gap:4px;flex-shrink:0}
+.saved-rule-actions button{font-size:11px;padding:4px 7px}
+.rule-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rule-help{font-size:11px;color:var(--muted)}
+#account-feedback{color:#805546;white-space:pre-wrap}
+#learning-summary{font-size:10px;line-height:1.4}
+@media(max-width:650px){#account-button{max-width:125px;font-size:10px}.header-actions{gap:4px}#account-dialog .dialog-actions{flex-wrap:wrap}.rule-fields{grid-template-columns:1fr;gap:0}}

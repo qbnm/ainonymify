@@ -46,6 +46,7 @@ Select text in the PDF, confirm its type, and matching occurrences in that docum
 - Automatic download after successful generation: a PDF for one document, a ZIP for multiple documents.
 - An optional private reference linking replacements to original values.
 - Temporary sessions with automatic expiry and manual deletion.
+- Optional local accounts with personal text labels and remembered Confirm / Ignore decisions; guest mode remains available.
 
 ## Quick start
 
@@ -61,7 +62,7 @@ Open [ainonymify on localhost](http://127.0.0.1:8765) and sign in with the crede
 
 Builds and dependency installation require Internet access; document processing does not. Docker Compose runs `composer install` in a dedicated image build stage. PDF.js and its resources are installed from `composer.lock` and published to `frontend/vendor/pdfjs`; the running application serves them locally without a CDN or dependency downloads.
 
-The default container runs as a non-root user with a read-only filesystem, RAM-backed `/tmp`, dropped capabilities, and a loopback-only port binding: `127.0.0.1:8765`. No document volume is mounted. Default limits are 3 GiB RAM, two CPUs, and 1.5 GiB temporary storage. Large scans may need more resources. Processing is serialized in one application process.
+The default container runs as a non-root user with a read-only filesystem, RAM-backed `/tmp`, dropped capabilities, and a loopback-only port binding: `127.0.0.1:8765`. No document volume is mounted. A separate `account-data` volume stores optional personal accounts and rules in SQLite at `/data/accounts.sqlite3`; PDFs and generated outputs stay temporary. Default limits are 3 GiB RAM, two CPUs, and 1.5 GiB temporary storage. Large scans may need more resources. Processing is serialized in one application process.
 
 ### Update or stop
 
@@ -116,14 +117,14 @@ Confirming a text selection, a readable manual region, or an existing detection 
 - Native glyph geometry is preferred; cached local OCR word boxes cover scanned content. OCR mistakes can cause missed matches.
 - Other PDFs in the batch are not automatically selected by this action.
 - Existing matching detections are confirmed instead of duplicated.
-- **Ignore** remains local. Confirming the same text again selects its matches again.
+- **Ignore** remains local within the current review. When signed in, it also saves a rule for future uploads by default. Confirming the same text again selects its matches again and replaces the saved Ignore decision.
 - Splitting an occurrence through the review dialog and adding visual-only regions do not trigger repeat selection.
 
 ### Bulk actions and entity references
 
 Select checkboxes in **Detections**, use **Select all on page**, or activate **Select regions** and drag across PDF boxes. Intersecting detections are selected. A new rectangle replaces the current page selection; Shift adds to it. Selections on other pages remain available. Ctrl/Command-clicking a box also toggles its selection; Escape leaves rectangle mode.
 
-**Confirm selected** and **Ignore selected** apply to checked occurrences across pages and documents. Confirmation also finds matching text in each affected PDF; ignoring affects only the checked occurrences. **Clear selection** clears the bulk selection without changing review states.
+**Confirm selected** and **Ignore selected** apply to checked occurrences across pages and documents. Confirmation also finds matching text in each affected PDF; ignoring affects only the checked occurrences in the current review. Signed-in bulk decisions also teach rules for future uploads. **Clear selection** clears the bulk selection without changing review states.
 
 Use the collapsed **Merge entities** panel to combine identities explicitly. The target entity supplies the private reference value and replacement identity. Case and whitespace are normalized for entity matching; approximate names are not silently merged. Splitting creates a separate identity.
 
@@ -187,12 +188,31 @@ Unlabeled names, unusual addresses, handwriting, tiny text, other scripts, and O
 
 Verification uses text extraction and 250-dpi visual OCR **inside selected regions** to look for original values. Replacements intentionally resemble emails, phones, and other sensitive patterns; a detector match alone is not a leak. Unselected occurrences may remain visible, including values selected elsewhere. Checks are not a guarantee of whole-document anonymity.
 
+### Optional accounts and personal rules
+
+Use **Guest · Account** in the header to create a local personal account or sign in. Guest uploads retain the existing deterministic detection and never teach persistent rules. The deployment's shared HTTP Basic credentials remain an outer access gate; they are separate from personal accounts.
+
+While signed in:
+
+- Add exact text such as `Lister Str. 31` under **Rules**, choose **Replace automatically**, an entity type and a personal label such as “My home address”. Matching native text and local OCR in future uploads become confirmed regions automatically.
+- Confirming a readable region teaches its source text; a corrected reference value is learned as an additional spelling. Explicit **Ignore** teaches a negative rule. Bulk Confirm / Ignore also learns the selected values. Merely analyzing or generating a PDF never learns unreviewed suggestions.
+- The review dialog offers **Remember this Confirm / Ignore for future uploads**, checked by default. Turn it off for a one-off decision. Split occurrences and visual-only regions are not learned.
+- Under **Rules**, edit an action/type/label or **Forget** a rule. A new explicit decision for the same text replaces the old action. Rules affect future analysis, not selections in an already open review.
+
+Matching ignores case and repeated whitespace, keeps punctuation significant and uses word boundaries. It does not perform fuzzy matching or infer other addresses. Longer replacement phrases take priority over contained phrases; Ignore takes priority over overlapping saved replacements. OCR errors can still miss matches. Review every document before export. Each account supports up to 200 rules, each up to 4096 characters, with labels up to 80 characters.
+
+Usernames are case-insensitive (3–64 letters, digits, dots, underscores or hyphens). Passwords require 12–256 characters and are salted and hashed with PBKDF2-HMAC-SHA256 (600,000 iterations). Random login tokens are stored only as SHA-256 hashes and expire after 30 days; logout revokes the current token. Login/registration attempts are limited per client address. Cookies are HttpOnly and SameSite=Strict, with Secure enabled for HTTPS requests. Use HTTPS when exposing the application beyond localhost. There is no email password recovery.
+
+Signing in/out returns to upload; download current results first. Temporary documents remain until expiry. **Delete account…** requires a second explicit click and deletes the account, rules, all logins and its temporary sessions. Deleting a document session leaves saved rules intact.
+
+Accounts, usernames and saved text are persistent local data, separate from the temporary document store. **Saved rule text is sensitive and stored in plaintext in SQLite.** Protect the volume and backups. `docker compose up --build` and ordinary container recreation preserve it; `docker compose down -v` deletes it. For native development the default is `.local/account-data` (ignored by Git); set `APP_DATA_DIR` for another location. The container uses `/data` in the named `account-data` volume. Back up this directory with the service stopped for a consistent copy. No PDF, filename or PDF coordinates are stored in the account database.
+
 ### Sessions and access
 
 - Sessions expire after 30 minutes of inactivity by default. An idle sweeper removes expired data within an additional 15 seconds. In-progress processing counts as activity.
 - **Delete session** removes the session files immediately. Restart/shutdown also removes session data; startup removes crash leftovers under the dedicated temporary root.
 - Downloaded files remain your responsibility. Browser memory may retain previews until the tab closes; session state is not stored in localStorage.
-- One configured account protects the application. Session IDs prevent accidental cross-session references, but this is not multi-user isolation: everyone using the shared account is trusted.
+- The configured shared credentials protect application access. Personal accounts isolate rules and temporary document sessions by account; guests are isolated by an opaque browser-session cookie. Knowing another session ID is insufficient to read, edit or download it. People sharing one personal login or browser profile share that identity. Instance administrators retain filesystem access.
 - Use one Uvicorn worker. Temporary state, locks, and cleanup are process-local.
 - All routes and assets require HTTP Basic authentication. Mutations require a same-origin custom header; cross-site requests are rejected and CORS is disabled. CSP restricts browser connections to this origin, and responses use `Cache-Control: no-store`.
 - Access logging is disabled and processing errors avoid exposing document content. Do not enable body logging or verbose PDF/OCR logs in a reverse proxy.
@@ -210,6 +230,7 @@ Verification uses text extraction and 250-dpi visual OCR **inside selected regio
 | `MAX_BATCH_MB` | `80` | Total upload limit per request |
 | `MAX_DOCUMENTS` | `10` | PDFs per session |
 | `MAX_PAGES` | `60` | Per-PDF and total batch page limit |
+| `APP_DATA_DIR` | `.local/account-data` (native), `/data` (Compose) | Persistent optional account and rule database; keep separate from the temporary root |
 | `APP_TEMP_DIR` | `/tmp/pdf-privacy-gateway` | Dedicated temporary parent; crash leftovers are removed on startup |
 | `FONT_PATH` | System DejaVu Sans | Local Unicode font; Arial fallback on macOS |
 
@@ -241,7 +262,7 @@ node --test scripts/tests/shortcuts.test.mjs
 php scripts/tests/frontend_assets_test.php
 ```
 
-Do not run multiple workers or overlapping reload processes: startup cleanup owns the dedicated temporary directory. Tests use separate temporary directories and generate synthetic PDFs; real documents are not committed. The suite covers detection, OCR, session isolation/expiry, auth, manual/native selections, repeat selection, bulk actions, replacement structure, font layout, pixel removal, selected-region verification, PDF/ZIP downloads, private references, and failed regeneration.
+Do not run multiple workers or overlapping reload processes: startup cleanup owns the dedicated temporary directory. Tests use separate temporary directories and generate synthetic PDFs; real documents are not committed. The suite covers detection, OCR, account persistence and deletion, private rules, guest/account isolation, session expiry, auth, manual/native selections, repeat selection, bulk actions, replacement structure, font layout, pixel removal, selected-region verification, PDF/ZIP downloads, private references, and failed regeneration.
 
 `.venv/bin/python scripts/smoke_running.py --username USER --password PASSWORD` checks a running localhost deployment using synthetic data. Browser verification also covers the compact layout, responsive resizing, and alignment of native text selections.
 
@@ -271,6 +292,12 @@ All endpoints require Basic authentication. POST/DELETE requests also require `X
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/account` | Current optional personal identity, or `null` for guest |
+| POST | `/api/account/register`, `/api/account/login` | Local username/password registration or login; sets HttpOnly cookie |
+| DELETE | `/api/account/login` | Revoke this login and return to guest |
+| DELETE | `/api/account` | Delete this account, all rules, logins and its temporary sessions |
+| GET / POST | `/api/account/rules` | List / upsert personal text, `type`, `label`, `action` (`redact` or `ignore`) |
+| DELETE | `/api/account/rules/{id}` | Forget one owned rule |
 | POST | `/api/sessions` | Create a temporary session |
 | POST | `/api/sessions/{id}/documents` | Upload a multipart `files` batch |
 | POST | `/api/sessions/{id}/analyze` | Extract text and independently OCR every page |
@@ -284,6 +311,8 @@ All endpoints require Basic authentication. POST/DELETE requests also require `X
 | POST | `/api/sessions/{id}/generate` | Redact and verify; optional JSON `include_mapping` defaults to false |
 | GET | `/api/sessions/{id}/download` | Verified PDF for one document, ZIP for multiple documents |
 | GET | `/api/sessions/{id}/download/mapping` | Private JSON reference, only after successful generation with `include_mapping: true` |
+
+API clients must retain cookies across requests, including in guest mode. Detection edits accept `remember` (default `true`, effective only when signed in); native/manual/single edits also accept `personal_label`.
 
 Generation returns session JSON; the web interface then starts the download. API clients should check `status == "complete"` before requesting an output. Verification warnings or edits block downloads until successful regeneration.
 
