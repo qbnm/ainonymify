@@ -1,5 +1,6 @@
 """Expand explicit text confirmations to matching occurrences in one PDF."""
 import re
+import unicodedata
 import pymupdf as fitz
 from ..models import Detection, uid
 from . import pdf
@@ -15,9 +16,11 @@ def pattern_for(value):
         return None
     expression = r'\s+'.join(re.escape(part) for part in parts)
     # A name/number must not select the prefix of a different name/number.
-    if re.match(r'\w', parts[0][0]):
+    first = next((c for c in parts[0] if not unicodedata.category(c).startswith('M')), parts[0][0])
+    last = next((c for c in reversed(parts[-1]) if not unicodedata.category(c).startswith('M')), parts[-1][-1])
+    if re.match(r'\w', first):
         expression = r'(?<!\w)' + expression
-    if re.match(r'\w', parts[-1][-1]):
+    if re.match(r'\w', last):
         expression += r'(?!\w)'
     return re.compile(expression)
 
@@ -47,7 +50,7 @@ def add_selection(session, selection):
     return selection
 
 
-def native_occurrences(info, pattern):
+def native_occurrences(info, pattern, matcher=None):
     chars = info.get('native_text', [])
     text, indexes, previous_line = [], [], None
     for i, char in enumerate(chars):
@@ -55,13 +58,15 @@ def native_occurrences(info, pattern):
             text.append('\n'); indexes.append(None)
         text.append(char['text']); indexes.append(i)
         previous_line = char['line']
-    for match in pattern.finditer(''.join(text)):
-        ids = [i for i in indexes[match.start():match.end()] if i is not None]
+    text = ''.join(text)
+    matches = matcher(pattern, text) if matcher else (m.span() for m in pattern.finditer(text))
+    for start, end in matches:
+        ids = [i for i in indexes[start:end] if i is not None]
         if ids:
             yield pdf.select_native_characters(info, ids)
 
 
-def ocr_occurrences(info, pattern):
+def ocr_occurrences(info, pattern, matcher=None):
     text, spans, lines = '', [], pdf.lines_from_words(info.get('ocr_words', []))
     for line_number, line in enumerate(lines):
         if text:
@@ -69,10 +74,11 @@ def ocr_occurrences(info, pattern):
         offset = len(text)
         text += line.text
         spans.extend((offset + a, offset + b, bbox, line_number) for a, b, bbox in line.spans)
-    for match in pattern.finditer(text):
-        selected = [(a, b, bbox, line) for a, b, bbox, line in spans if a < match.end() and b > match.start()]
+    matches = matcher(pattern, text) if matcher else (m.span() for m in pattern.finditer(text))
+    for start, end in matches:
+        selected = [(a, b, bbox, line) for a, b, bbox, line in spans if a < end and b > start]
         # OCR supplies word boxes, so only complete words can be selected safely.
-        if not selected or selected[0][0] != match.start() or selected[-1][1] != match.end():
+        if not selected or selected[0][0] != start or selected[-1][1] != end:
             continue
         # Preserve line-level spaces and use separate boxes across lines.
         groups = []

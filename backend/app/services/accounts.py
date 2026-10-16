@@ -9,12 +9,9 @@ import sqlite3
 import time
 import unicodedata
 from fastapi import HTTPException
+from .text_matching import text_key
 
 owner = ContextVar('document_owner', default=None)
-
-
-def text_key(text):
-    return ' '.join(unicodedata.normalize('NFKC', text).split()).casefold()
 
 
 class Accounts:
@@ -47,14 +44,37 @@ class Accounts:
     def close(self):
         self.db.close()
 
-    def throttle(self, peer):
+    def throttle(self, peer, username='', register=False):
         now = time.monotonic()
+        username = unicodedata.normalize('NFKC', username).strip().casefold()
+        name = hashlib.sha256(username.encode()).hexdigest()
+        pair, address = ('login', peer, name), ('login-peer', peer)
+        limits = [(('register-peer', peer), 20)] if register else [(pair, 20), (address, 200)]
         with self.lock:
-            self.attempts = {key: values for key, values in self.attempts.items() if values[-1] > now - 900}
-            values = [v for v in self.attempts.get(peer, []) if v > now - 900]
-            if len(values) >= 20 or (peer not in self.attempts and len(self.attempts) >= 1000):
-                raise HTTPException(429, 'Too many account attempts; try again in 15 minutes')
-            self.attempts[peer] = values + [now]
+            self.attempts = {key: [v for v in values if v > now-900]
+                for key, values in self.attempts.items() if values[-1] > now-900}
+            if any(len(self.attempts.get(key, [])) >= limit for key, limit in limits):
+                raise HTTPException(429, 'Too many account attempts; try again in 15 minutes',
+                                    headers={'Retry-After': '900'})
+            new_keys = sum(key not in self.attempts for key, _ in limits)
+            if len(self.attempts) + new_keys > 10000:
+                raise HTTPException(429, 'Account authentication is busy; try again later')
+            # Reserve attempts before hashing, bounding simultaneous requests too.
+            for key, _ in limits:
+                self.attempts.setdefault(key, []).append(now)
+            return (pair, address, now) if not register else None
+
+    def authentication_succeeded(self, ticket):
+        if ticket is None:
+            return  # Registration has its own address budget, even on success.
+        pair, address, stamp = ticket
+        with self.lock:
+            self.attempts.pop(pair, None)
+            values = self.attempts.get(address, [])
+            if stamp in values:
+                values.remove(stamp)
+            if not values:
+                self.attempts.pop(address, None)
 
     @staticmethod
     def password_hash(password, salt):

@@ -1,6 +1,6 @@
 import asyncio
 import base64
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 import hashlib
 import hmac
 from pathlib import Path
@@ -207,8 +207,10 @@ def account_status(request: Request):
 @app.post('/api/account/login')
 def account_login(data: Credentials, request: Request, response: Response):
     action = request.url.path.rsplit('/', 1)[-1]
-    accounts.throttle(request.client.host if request.client else 'local')
+    ticket = accounts.throttle(request.client.host if request.client else 'local', data.username,
+                               register=action == 'register')
     identity, token = accounts.authenticate(data.username, data.password, register=action == 'register')
+    accounts.authentication_succeeded(ticket)
     accounts.logout(request.state.login_token)
     login_cookie(response, request, token)
     return {'account': identity}
@@ -261,7 +263,7 @@ def forget_rule(rule_id: str, request: Request):
 def remember(session, detections, label=''):
     identity = owner.get()
     if not identity or not identity.startswith('u:'):
-        return
+        return []
     entities = {e.id: e for e in session.entities}
     values = []
     for detection in detections:
@@ -273,12 +275,24 @@ def remember(session, detections, label=''):
         values.append((text, entity.type, label, action))
         if text_key(entity.value) != text_key(text):
             values.append((entity.value, entity.type, label, action))
-    accounts.save_rules(identity[2:], values)
+    return values
+
+
+@contextmanager
+def review_edit(sid):
+    with store.review(sid) as (session, root):
+        preferences = []
+        yield session, root, preferences
+        identity = owner.get()
+        if preferences and identity and identity.startswith('u:'):
+            # One SQLite transaction; Store.review commits its draft only after
+            # this succeeds. Existing export files remain untouched on failure.
+            accounts.save_rules(identity[2:], preferences)
 
 
 @app.post('/api/sessions')
-def create():
-    return store.create().public()
+def create(request: Request):
+    return store.create(peer=request.client.host if request.client else 'local').public()
 
 
 @app.get('/api/sessions/{sid}')
@@ -366,7 +380,7 @@ class BulkEdit(BaseModel):
 
 @app.post('/api/sessions/{sid}/detections/bulk')
 def bulk_edit(sid: str, data: BulkEdit):
-    with store.access(sid) as (session, root):
+    with review_edit(sid) as (session, root, preferences):
         if session.status not in ('review', 'verification_warning', 'complete'):
             raise ValueError('Complete analysis before editing detections')
         if data.status not in ('confirmed', 'ignored'):
@@ -387,9 +401,8 @@ def bulk_edit(sid: str, data: BulkEdit):
                     continue
                 expanded.add(key)
                 repeats.mark_repeats(session, document(session, seed.document_id), seed)
-        invalidate(session, root)
         if data.remember:
-            remember(session, [by_id[i] for i in sorted(ids)])
+            preferences.extend(remember(session, [by_id[i] for i in sorted(ids)]))
         return session.public()
 
 
@@ -405,7 +418,7 @@ class TextRegion(BaseModel):
 
 @app.post('/api/sessions/{sid}/detections/from-text')
 def native_text_region(sid: str, data: TextRegion):
-    with store.access(sid) as (session, root):
+    with review_edit(sid) as (session, root, preferences):
         doc = document(session, data.document_id)
         if data.type not in TYPES or data.page > len(doc.pages) or session.status not in ('review', 'verification_warning', 'complete'):
             raise ValueError('Complete analysis and select text on a valid page')
@@ -417,15 +430,14 @@ def native_text_region(sid: str, data: TextRegion):
         seed = repeats.add_selection(session, Detection(uid(), doc.id, data.page, bbox, 'native_text', 1,
             entity.id, original, entity.normalized_value, 'confirmed', 'Selected from original visible PDF text', rects=rects))
         repeats.mark_repeats(session, doc, seed)
-        invalidate(session, root)
         if data.remember:
-            remember(session, [seed], data.personal_label)
+            preferences.extend(remember(session, [seed], data.personal_label))
         return session.public()
 
 
 @app.post('/api/sessions/{sid}/detections/{detection_id}')
 def edit(sid: str, detection_id: str, data: Edit):
-    with store.access(sid) as (session, root):
+    with review_edit(sid) as (session, root, preferences):
         if data.status not in ('confirmed', 'ignored', 'pending') or data.type not in TYPES:
             raise ValueError('Invalid review state or entity type')
         if not data.value.strip() and data.status != 'ignored':
@@ -436,9 +448,8 @@ def edit(sid: str, detection_id: str, data: Edit):
         detection.normalized_value = entity.normalized_value
         if data.status == 'confirmed' and not data.separate:
             repeats.mark_repeats(session, document(session, detection.document_id), detection)
-        invalidate(session, root)
         if not data.separate and data.remember:
-            remember(session, [detection], data.personal_label)
+            preferences.extend(remember(session, [detection], data.personal_label))
         return session.public()
 
 
@@ -455,7 +466,7 @@ class Region(BaseModel):
 
 @app.post('/api/sessions/{sid}/detections')
 def manual(sid: str, data: Region):
-    with store.access(sid) as (session, root):
+    with review_edit(sid) as (session, root, preferences):
         doc = document(session, data.document_id)
         if data.type not in TYPES or data.page > len(doc.pages) or session.status not in ('review', 'verification_warning', 'complete'):
             raise ValueError('Invalid region')
@@ -479,9 +490,8 @@ def manual(sid: str, data: Region):
             'Visual-only region has no text value' if data.visual_only else 'Manually added', evidence))
         if not data.visual_only:
             repeats.mark_repeats(session, doc, seed)
-        invalidate(session, root)
         if not data.visual_only and data.remember:
-            remember(session, [seed], data.personal_label)
+            preferences.extend(remember(session, [seed], data.personal_label))
         return session.public()
 
 

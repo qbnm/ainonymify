@@ -38,10 +38,19 @@ async function begin(files) {
     await accountUI.refresh();
     if (Array.from(files).some(f => !f.name.toLowerCase().endsWith('.pdf'))) throw new Error('Choose PDF files only.');
     session = await (await api('/api/sessions', {method:'POST'})).json();
-    const form = new FormData(); for (const file of files) form.append('files', file);
-    session = await (await api(`/api/sessions/${session.id}/documents`, {method:'POST', form})).json();
-    $('busy-text').textContent = 'Analyzing text and page pixels locally…';
-    session = await mutate('/analyze');
+    const uploadedSessionId = session.id;
+    try {
+      const form = new FormData(); for (const file of files) form.append('files', file);
+      session = await (await api(`/api/sessions/${session.id}/documents`, {method:'POST', form})).json();
+      $('busy-text').textContent = 'Analyzing text and page pixels locally…';
+      session = await mutate('/analyze');
+    } catch (error) {
+      // A failed upload has no review to delete from. Release its quota slot so
+      // retrying an invalid PDF does not lock the browser out of new uploads.
+      try { await api(`/api/sessions/${uploadedSessionId}`, {method:'DELETE'}); } catch {}
+      session = null;
+      throw error;
+    }
     bulkSelection.clear(); setInteractionMode(null);
     currentDocument = session.documents[0].id; currentPage = 1;
     $('landing').hidden = true; $('review').hidden = false;

@@ -203,9 +203,9 @@ While signed in:
 - The review dialog offers **Remember this Confirm / Ignore for future uploads**, checked by default. Turn it off for a one-off decision. Split occurrences and visual-only regions are not learned.
 - Under **Rules**, edit an action/type/label or **Forget** a rule. A new explicit decision for the same text replaces the old action. Rules affect future analysis, not selections in an already open review.
 
-Matching ignores case and repeated whitespace, keeps punctuation significant and uses word boundaries. It does not perform fuzzy matching or infer other addresses. Longer replacement phrases take priority over contained phrases; Ignore takes priority over overlapping saved replacements. OCR errors can still miss matches. Review every document before export. Each account supports up to 200 rules, each up to 4096 characters, with labels up to 80 characters.
+Matching uses the same Unicode NFKC normalization, case folding and whitespace collapse as saved-rule keys (including `straße` / `STRASSE`), keeps punctuation significant and uses word boundaries. Normalized matches map back to complete original source characters and exact source rectangles. It does not perform fuzzy matching or infer other addresses. Longer replacement phrases take priority over contained phrases; Ignore takes priority over saved replacements whose actual text fragments overlap; empty space inside a multiline bounding box does not suppress another rule. OCR errors can still miss matches. Review every document before export. Each account supports up to 200 rules, each up to 4096 characters, with labels up to 80 characters.
 
-Usernames are case-insensitive (3–64 letters, digits, dots, underscores or hyphens). Passwords require 12–256 characters and are salted and hashed with PBKDF2-HMAC-SHA256 (600,000 iterations). Random login tokens are stored only as SHA-256 hashes and expire after 30 days; logout revokes the current token. Login/registration attempts are limited per client address. Cookies are HttpOnly and SameSite=Strict, with Secure enabled for HTTPS requests. Use HTTPS when exposing the application beyond localhost. There is no email password recovery.
+Usernames are case-insensitive (3–64 letters, digits, dots, underscores or hyphens). Passwords require 12–256 characters and are salted and hashed with PBKDF2-HMAC-SHA256 (600,000 iterations). Random login tokens are stored only as SHA-256 hashes and expire after 30 days; logout revokes the current token. Login attempts reserve a budget before password hashing: 20 failed/in-flight attempts per account and client address over 15 minutes, with a broader 200-attempt address budget against credential spraying. Successful logins reset that account/address budget and do not consume the broad failure budget. Registration has a separate 20-attempt address budget over 15 minutes. Cookies are HttpOnly and SameSite=Strict, with Secure enabled for HTTPS requests. Use HTTPS when exposing the application beyond localhost. There is no email password recovery.
 
 Signing in/out returns to upload; download current results first. Temporary documents remain until expiry. **Delete account…** requires a second explicit click and deletes the account, rules, all logins and its temporary sessions. Deleting a document session leaves saved rules intact.
 
@@ -213,6 +213,8 @@ Accounts, usernames and saved text are persistent local data, separate from the 
 
 ### Sessions and access
 
+- Review edits and learned rules commit together. Validation or rule-storage failures leave the previous selections, references and verified downloads intact. A successful edit blocks previous downloads until regeneration.
+- Up to three active document sessions per account or guest browser, within the instance limit of 20. Guests also share a six-session limit per client address to bound cookie rotation; signing in uses the account quota. Session creation is limited to ten per owner per minute, plus twenty guest creations per address per minute. Delete unused sessions to release active slots. Rate-limit counters are process-local.
 - Sessions expire after 30 minutes of inactivity by default. An idle sweeper removes expired data within an additional 15 seconds. In-progress processing counts as activity.
 - **Delete session** removes the session files immediately. Restart/shutdown also removes session data; startup removes crash leftovers under the dedicated temporary root.
 - Downloaded files remain your responsibility. Browser memory may retain previews until the tab closes; session state is not stored in localStorage.
@@ -262,7 +264,7 @@ Run checks in another terminal:
 ```sh
 .venv/bin/python -m pytest backend/tests -q
 node --check frontend/js/app.js
-node --test scripts/tests/shortcuts.test.mjs
+node --test scripts/tests/*.test.mjs
 php scripts/tests/frontend_assets_test.php
 ```
 

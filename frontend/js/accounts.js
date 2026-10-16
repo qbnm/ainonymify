@@ -71,11 +71,22 @@ export function initAccounts({api, types, hasSession}) {
     });
   };
   $('account-close').onclick = $('continue-guest').onclick = () => $('account-dialog').close();
+  const clearPassword = () => { $('account-password').value = ''; };
+  $('account-dialog').addEventListener('close', clearPassword);
   $('account-auth-form').onsubmit = event => {
     event.preventDefault(); const mode = event.submitter?.value === 'register' ? 'register' : 'login';
     action(async () => {
-      await api(`/api/account/${mode}`, {method:'POST',data:{username:$('account-username').value,password:$('account-password').value}});
-      $('account-password').value = ''; location.reload();
+      const credentials = {username:$('account-username').value,password:$('account-password').value};
+      clearPassword();
+      try {
+        await api(`/api/account/${mode}`, {method:'POST',data:credentials});
+        location.reload();
+      } finally {
+        // Release our reference on both success and failure. JavaScript strings
+        // and the browser's request buffers cannot be securely zeroed here.
+        credentials.password = '';
+        clearPassword();
+      }
     });
   };
   $('account-logout').onclick = () => action(async () => { await api('/api/account/login', {method:'DELETE'}); location.reload(); });
