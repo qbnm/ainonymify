@@ -12,6 +12,10 @@
   <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-146b56"></a>
   <a href="#local-development-and-verification"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&amp;logoColor=white"></a>
   <a href="#quick-start"><img alt="Docker Compose" src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&amp;logoColor=white"></a>
+  <a href="composer.json"><img alt="Composer 2" src="https://img.shields.io/badge/Composer-2-885630?logo=composer&amp;logoColor=white"></a>
+  <a href="#quick-start"><img alt="Self-hosted" src="https://img.shields.io/badge/deployment-self--hosted-146b56"></a>
+  <a href="#privacy-design-and-limitations"><img alt="Processing: local" src="https://img.shields.io/badge/processing-local-146b56"></a>
+  <a href="https://github.com/qbnm/ainonymify/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/qbnm/ainonymify"></a>
 </p>
 
 ainonymify is a self-hosted application for Docker hosts and Synology NAS devices. Upload PDFs, review sensitive text, and download anonymized copies. Your original files stay unchanged. Processing happens locally, without AI services, cloud APIs, telemetry, CDNs, or runtime downloads.
