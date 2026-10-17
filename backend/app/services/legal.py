@@ -21,7 +21,7 @@ def safe_source(path):
 
 
 def source_files():
-    for name in (*ROOT_FILES, 'frontend/index.html', 'frontend/legal.html'):
+    for name in (*ROOT_FILES, 'frontend/index.html', 'frontend/legal.html', 'frontend/favicon.svg', 'frontend/favicon.ico'):
         path = ROOT / name
         if safe_source(path):
             yield path
