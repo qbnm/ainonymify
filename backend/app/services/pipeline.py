@@ -4,7 +4,7 @@ import unicodedata
 import pymupdf as fitz
 from ..models import Detection, TOKEN_RE, uid, normalize
 from ..detectors.rules import RuleDetector
-from . import pdf, mapping
+from . import pdf, mapping, legal
 
 DETECTOR = RuleDetector()
 
@@ -164,7 +164,7 @@ def generate(session, root, include_mapping=False):
                 image = pdf.canonical_image(page)
                 pdf.erase(image, page.rect.width, page.rect.height, [box for d in selected for box in detection_rects(d)])
                 pdf.fresh_page(output, image, page.rect.width, page.rect.height, groups, document.pages[index])
-            output.set_metadata({})
+            output.set_metadata(legal.pdf_metadata())
             output.save(destination, garbage=4, deflate=True)
         session.warnings.extend(verify(destination, session, document))
         generated.append((destination, f'documents/document-{number:02d}.anonymized.pdf'))

@@ -11,12 +11,12 @@ import secrets
 from http.cookies import SimpleCookie
 import pymupdf as fitz
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from .models import Document, Detection, TYPES, uid
 from .services.sessions import Store, invalidate
-from .services import pdf, pipeline, repeats, personal_rules
+from .services import pdf, pipeline, repeats, personal_rules, legal
 from .services.accounts import Accounts, owner, text_key
 
 FRONTEND = Path(__file__).resolve().parents[2] / 'frontend'
@@ -548,6 +548,54 @@ def download_mapping(sid: str):
             raise ValueError('Generate with the private reference option before downloading it')
         return Response(path.read_bytes(), media_type='application/json',
                         headers={'Content-Disposition': 'attachment; filename="mapping.json"'})
+
+
+@app.get('/legal/')
+def legal_page():
+    return FileResponse(FRONTEND / 'legal.html')
+
+
+@app.get('/legal/source')
+def legal_source():
+    return Response(legal.source_archive(), media_type='application/zip',
+                    headers={'Content-Disposition': 'attachment; filename="ainonymify-source.zip"'})
+
+
+@app.get('/legal/license')
+def legal_license():
+    return FileResponse(legal.ROOT / 'LICENSE', media_type='text/plain')
+
+
+@app.get('/legal/notices')
+def legal_notices():
+    return FileResponse(legal.ROOT / 'THIRD_PARTY_NOTICES.md', media_type='text/plain')
+
+
+@app.get('/legal/files/')
+def legal_files():
+    from html import escape
+    links = []
+    if legal.BUNDLE.exists():
+        for path in sorted(legal.BUNDLE.rglob('*')):
+            if path.is_file() and not path.is_symlink():
+                name = path.relative_to(legal.BUNDLE).as_posix()
+                links.append(f'<li><a href="/legal/files/{escape(name, quote=True)}">{escape(name)}</a></li>')
+    message = '<ul>' + ''.join(links) + '</ul>' if links else (
+        '<p>Native development: prepare dependency sources with '
+        '<code>python scripts/prepare_legal.py</code>. Docker builds include this bundle automatically.</p>')
+    return HTMLResponse('<!doctype html><html lang="en"><meta charset="utf-8">'
+                        '<title>Dependency sources &amp; licenses</title><body>'
+                        '<a href="/legal/">Source &amp; licenses</a>'
+                        '<h1>Dependency sources &amp; licenses</h1>' + message + '</body></html>')
+
+
+@app.get('/legal/files/{name:path}')
+def legal_file(name: str):
+    path = (legal.BUNDLE / name).resolve()
+    if (not path.is_relative_to(legal.BUNDLE.resolve()) or not path.is_file()
+            or any(part.startswith('.') for part in Path(name).parts)):
+        raise HTTPException(404, 'License/source file not found')
+    return FileResponse(path, filename=path.name)
 
 
 app.mount('/', StaticFiles(directory=FRONTEND, html=True), name='frontend')

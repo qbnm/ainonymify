@@ -40,7 +40,11 @@ def test_redaction_native_scanned_hybrid_and_broken_ocr(tmp_path,kind):
         text=''.join(p.get_text() for p in doc)
         assert IBAN not in text and EMAIL not in text
         assert next(e for e in session.entities if e.type=='IBAN').replacement(next(d.original_text for d in session.detections if d.entity_id==next(e.id for e in session.entities if e.type=='IBAN'))) in text
-        assert not any(v for k,v in doc.metadata.items() if k not in ('format','encryption'))
+        assert not any(v for k,v in doc.metadata.items() if k not in ('format','encryption','creator','producer'))
+        assert doc.metadata['creator'] == 'ainonymify'
+        assert f'PyMuPDF {fitz.VersionBind}' in doc.metadata['producer']
+        assert f'MuPDF {fitz.VersionFitz}' in doc.metadata['producer']
+        assert 'Artifex Software, Inc.' in doc.metadata['producer']
         assert doc.embfile_count()==0
         image=pdf.render(doc[0])
         visual=' '.join(w[4] for w in pdf.ocr(image,doc[0].rect.width,doc[0].rect.height))
@@ -109,7 +113,7 @@ def test_metadata_annotations_and_attachments(tmp_path):
     session=prepare(tmp_path,[raw]);approve(session);pipeline.generate(session,tmp_path)
     assert session.status=='complete',session.warnings
     with fitz.open(tmp_path/f'output-{session.documents[0].id}.pdf') as out:
-        assert not any(v for k,v in out.metadata.items() if k not in ('format','encryption'))
+        assert not any(v for k,v in out.metadata.items() if k not in ('format','encryption','creator','producer'))
         assert not list(out[0].annots() or [])
     with fitz.open(stream=native_pdf(),filetype='pdf') as doc:
         doc.embfile_add('secret.txt',b'secret')

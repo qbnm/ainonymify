@@ -18,6 +18,10 @@ COPY backend ./backend
 COPY frontend ./frontend
 COPY --from=frontend-assets /build/frontend/vendor ./frontend/vendor
 COPY scripts ./scripts
+COPY Dockerfile LICENSE THIRD_PARTY_NOTICES.md README.md SECURITY.md compose.yml composer.json composer.lock requirements-dev.txt .env.example .dockerignore .gitignore ./
+COPY docs ./docs
+# Fail the build if exact dependency sources/notices cannot be retained.
+RUN python scripts/prepare_legal.py
 # Composer runs in the build stage; the runtime needs no PHP or dependency downloads.
 RUN useradd --uid 10001 --create-home gateway \
     && mkdir -p /data && chown 10001:10001 /data && chmod 700 /data
@@ -25,3 +29,13 @@ USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD python -c "import urllib.request,urllib.error; r=urllib.request.Request('http://127.0.0.1:8000/'); exec('try:\n urllib.request.urlopen(r)\nexcept urllib.error.HTTPError as e:\n assert e.code == 401')"
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--log-level", "critical"]
+
+# Optional release target: retain exact Debian sources as well as app/dependency
+# sources. It deliberately fails if a matching source version is unavailable.
+FROM runtime AS distribution-sources
+USER root
+RUN sed -i 's/^Types: deb$/Types: deb deb-src/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && python scripts/collect_system_sources.py \
+    && rm -rf /var/lib/apt/lists/*
+USER 10001:10001

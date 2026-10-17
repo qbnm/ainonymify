@@ -160,6 +160,8 @@ def canonicalize(raw, destination):
                 put_text(page, list(rect), word[4], invisible=True, min_size=0)
             native = native_characters(original)
             pages.append(dict(width=width, height=height, native_text=native, text_selectable=bool(native)))
+        from .legal import pdf_metadata
+        out.set_metadata(pdf_metadata())
         out.save(destination, garbage=4, deflate=True)
         return pages
 

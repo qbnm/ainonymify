@@ -182,7 +182,7 @@ Source pages are rasterized locally once at 200 dpi. Export reuses those canonic
 
 For visible native text, replacements inherit the source baseline, size, color, and bold/italic style. Common sans-serif families use bundled complete Liberation Sans fonts; other families may use a local fallback. Text is reduced if its width exceeds the selected region: equal character counts do not imply equal widths in proportional fonts. Distinct text rows remain separate even when font bounding boxes overlap. Duplicate/contained selections print once; partially overlapping selections on one line must be combined or one ignored before export.
 
-The result is not a vector-preserving copy. It can look softer at high zoom and does not preserve original typography perfectly, forms, signatures, links, layers, or interactive content. Original metadata, comments, annotations, actions, and attachments are not retained as PDF objects. Annotation appearances visible in the source rendering become pixels and must be reviewed. Content outside the visible page crop is not copied; documents with attachments are rejected.
+The result is not a vector-preserving copy. It can look softer at high zoom and does not preserve original typography perfectly, forms, signatures, links, layers, or interactive content. Original metadata, comments, annotations, actions, and attachments are not retained as PDF objects. Output metadata contains only fixed application/engine attribution (ainonymify, PyMuPDF/MuPDF versions and Artifex), with no input-document metadata. Annotation appearances visible in the source rendering become pixels and must be reviewed. Content outside the visible page crop is not copied; documents with attachments are rejected.
 
 ### Detection and verification
 
@@ -324,4 +324,10 @@ Generation returns session JSON; the web interface then starts the download. API
 
 ## License
 
-See [LICENSE](LICENSE). PyMuPDF has its own AGPL/commercial licensing terms; PDF.js and bundled fonts retain their respective notices.
+ainonymify is licensed under **AGPL-3.0-only**; see [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). PyMuPDF/MuPDF use their AGPL option; PDF.js, fonts and other dependencies retain their own licenses.
+
+The **Source & licenses** footer link offers the currently installed application source, the AGPL text and third-party notices. Docker builds also collect versioned dependency sources (including the complete MuPDF release), original license files and a SHA-256 manifest. These files are served locally, without runtime downloads. Native installations can prepare the same bundle with `python scripts/prepare_legal.py` after installing dependencies.
+
+Output PDFs retain only software attribution in Creator/Producer metadata; original private metadata is discarded. Processing does not make a user's document content AGPL-licensed.
+
+See [source distribution and release instructions](docs/RELEASING.md) before publishing container images or modified deployments.

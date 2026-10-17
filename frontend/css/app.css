@@ -179,3 +179,6 @@ dialog input:not([type=checkbox]){display:block;width:100%;margin-top:6px;paddin
 #account-feedback{color:#805546;white-space:pre-wrap}
 #learning-summary{font-size:10px;line-height:1.4}
 @media(max-width:650px){#account-button{max-width:125px;font-size:10px}.header-actions{gap:4px}#account-dialog .dialog-actions{flex-wrap:wrap}.rule-fields{grid-template-columns:1fr;gap:0}}
+
+.legal-link{font-size:11px;color:var(--teal);white-space:nowrap}
+@media(max-width:650px){.header-actions .local{display:none}.legal-link{font-size:10px}}

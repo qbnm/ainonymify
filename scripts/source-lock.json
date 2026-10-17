@@ -1,0 +1,10 @@
+{
+  "mupdf-1.28.2-source.tar.gz": {
+    "url": "https://mupdf.com/downloads/archive/mupdf-1.28.2-source.tar.gz",
+    "sha256": "44075a84e329db55b9bef5f342a70fd26d69e48ad1d33cb89d9664581c641156"
+  },
+  "pdfjs-5.4.624-source.tar.gz": {
+    "url": "https://codeload.github.com/mozilla/pdf.js/tar.gz/refs/tags/v5.4.624",
+    "sha256": "3b336f2bb4c3e583318c804d3a1516583d4c63c9088fa1db8393a8222a18104e"
+  }
+}
