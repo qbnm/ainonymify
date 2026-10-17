@@ -200,7 +200,7 @@ Use **Guest · Account** in the header to create a local personal account or sig
 
 While signed in:
 
-- Add exact text such as `Lister Str. 31` under **Rules**, choose **Replace automatically**, an entity type and a personal label such as “My home address”. Matching native text and local OCR in future uploads become confirmed regions automatically.
+- Add exact text such as `Muster Str. 211` under **Rules**, choose **Replace automatically**, an entity type and a personal label such as “My home address”. Matching native text and local OCR in future uploads become confirmed regions automatically.
 - Confirming a readable region teaches its source text; a corrected reference value is learned as an additional spelling. Explicit **Ignore** teaches a negative rule. Bulk Confirm / Ignore also learns the selected values. Merely analyzing or generating a PDF never learns unreviewed suggestions.
 - The review dialog offers **Remember this Confirm / Ignore for future uploads**, checked by default. Turn it off for a one-off decision. Split occurrences and visual-only regions are not learned.
 - Under **Rules**, edit an action/type/label or **Forget** a rule. A new explicit decision for the same text replaces the old action. Rules affect future analysis, not selections in an already open review.

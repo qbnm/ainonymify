@@ -10,7 +10,7 @@ def shape(value):
 
 
 @pytest.mark.parametrize('original', [
-    'Lister Str. 31', 'Müller GmbH, Straße 3a', 'ALEx@example.test',
+    'Muster Str. 211', 'Müller GmbH, Straße 3a', 'ALEx@example.test',
     '+49 (30) 123-456/78', 'DE02 1203 0000 0000 2020 51',
     'Адрес: Улица ٣١', 'Αθήνα 12', '漢字１２', 'A  B\tC.\nD-9',
 ])
