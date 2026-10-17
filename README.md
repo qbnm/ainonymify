@@ -66,7 +66,7 @@ Open [ainonymify on localhost](http://127.0.0.1:8765) and sign in with the crede
 
 Builds and dependency installation require Internet access; document processing does not. Docker Compose runs `composer install` in a dedicated image build stage. PDF.js and its resources are installed from `composer.lock` and published to `frontend/vendor/pdfjs`; the running application serves them locally without a CDN or dependency downloads.
 
-The default container runs as a non-root user with a read-only filesystem, RAM-backed `/tmp`, dropped capabilities, and a loopback-only port binding: `127.0.0.1:8765`. No document volume is mounted. A separate `account-data` volume stores optional personal accounts and rules in SQLite at `/data/accounts.sqlite3`; PDFs and generated outputs stay temporary. Default limits are 3 GiB RAM, two CPUs, and 1.5 GiB temporary storage. Large scans may need more resources. Processing is serialized in one application process.
+The default container runs as a non-root user with a read-only filesystem, RAM-backed `/tmp`, dropped capabilities, and a loopback-only port binding: `127.0.0.1:8765`. No document volume is mounted. A separate `account-data` volume stores optional personal accounts and rules in SQLite at `/data/accounts.sqlite3`; PDFs and generated outputs stay temporary. Default limits are 3 GiB RAM and 1.5 GiB temporary storage. No hard CPU quota is configured, for compatibility with Synology kernels without CPU CFS bandwidth support. Large scans may need more resources. Processing is serialized in one application process.
 
 ### Update or stop
 
@@ -83,6 +83,8 @@ docker compose down
  **Recreating or stopping the container deletes active sessions and their uploaded documents, selections, and generated results.** Download anything you need first. Changes to files copied into the image, including the frontend, require an image rebuild.
 
 ### Synology DSM / Container Manager
+
+The default Compose file omits `cpus`/CFS quotas because some Synology kernels cannot apply them. If Container Manager reports `NanoCPUs can not be set ... CPU CFS scheduler`, remove any `cpus`, `cpu_quota`, `cpu_period`, or `deploy.resources.limits.cpus` settings from the project's Compose configuration and any local override, then redeploy the project. For an older copy of this project, remove the `cpus: 2` line. With SSH, run `docker compose up -d` from the project directory after saving the configuration; rebuilding the image or deleting the account-data volume is unnecessary. On hosts with CFS support, a hard CPU limit can be added in a local Compose override if needed.
 
 1. Copy the repository to a NAS folder such as `/volume1/docker/ainonymify`.
 2. Copy `.env.example` to `.env` and set credentials.

@@ -23,7 +23,7 @@ services:
       - /tmp:size=1536m,mode=1777
     shm_size: 128m
     mem_limit: 3g
-    cpus: 2
+    # No CFS CPU quota: some Synology kernels cannot apply NanoCPUs limits.
     cap_drop:
       - ALL
     security_opt:
