@@ -27,11 +27,11 @@ ainonymify is a self-hosted application for Docker hosts and Synology NAS device
 ![ainonymify review workspace with a large PDF preview, selected regions, and the Detections sidebar](docs/assets/review-workspace.png)
 
 <details>
-<summary>Watch text selection and automatic repeat detection (10 seconds)</summary>
+<summary>Watch the full workflow (43 seconds)</summary>
 
-Select text in the PDF, confirm its type, and matching occurrences in that document are selected automatically.
+Follow a synthetic invoice from upload to the downloaded anonymized PDF: review automatic detections, select native text, confirm its type, mark repeated occurrences, draw an extra region, and use bulk Ignore. The demo also shows the optional account entry point for remembering decisions across future uploads. Short captions explain each step, and the final frame shows the actual exported PDF.
 
-![Select a company name, confirm it, and automatically mark its repeated occurrence](docs/assets/text-selection-demo.gif)
+![Complete ainonymify workflow: upload, review detections, select text, find repeats, draw regions, bulk ignore, generate, download and inspect the anonymized PDF](docs/assets/text-selection-demo.gif)
 
 </details>
 
