@@ -1,6 +1,6 @@
 fastapi==0.143.1
 uvicorn==0.54.0
 PyMuPDF==1.28.2
-Pillow==12.3.0
+Pillow==13.0.0
 pytesseract==0.3.13
 python-multipart==0.0.32
